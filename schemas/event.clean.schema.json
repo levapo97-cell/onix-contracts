@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://onix.devtoolsdk.com/schemas/event.clean.schema.json",
+  "title": "CleanEvent",
+  "description": "Evento limpio, enriquecido y SIN credenciales. Lo publica onix-guard en onix.clean.<session>; lo consumen onix-recorder (persiste) y onix-gateway (empuja al vivo). El valor real de cualquier credencial ya fue eliminado: solo queda su hash SHA-256.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "session", "agent_role", "hook", "ts", "received_at", "project", "params_hash", "is_error", "is_repetition", "credentials"],
+  "properties": {
+    "v": { "type": "integer", "const": 1, "description": "Versión del contrato." },
+    "session": { "type": "string", "minLength": 1, "description": "claude_session_id." },
+    "agent_role": {
+      "type": "string",
+      "enum": ["project_lead", "fullstack", "designer", "growth", "sales", "gm"],
+      "description": "Rol del agente."
+    },
+    "hook": {
+      "type": "string",
+      "enum": ["SessionStart", "PreToolUse", "PostToolUse", "Stop", "SubagentStop", "Notification"],
+      "description": "Hook que disparó el evento."
+    },
+    "ts": { "type": "string", "format": "date-time", "description": "Timestamp del agente (UTC)." },
+    "received_at": { "type": "string", "format": "date-time", "description": "Cuando lo recibió el ingestor (UTC)." },
+    "tool": { "type": "string", "description": "Nombre de la tool, si aplica." },
+    "params_normalized": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Parámetros YA redactados (sin valores de credenciales) y normalizados para comparar repeticiones."
+    },
+    "params_hash": {
+      "type": "string",
+      "description": "SHA-256 de params_normalized. Base de la regla de repetición (mismo tool + params_hash >= 3 veces).",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "result": { "$ref": "#/$defs/Result" },
+    "tokens": { "type": "integer", "minimum": 0, "description": "Tokens consumidos." },
+    "cost_usd": { "type": "number", "minimum": 0, "description": "Costo en USD." },
+    "cwd": { "type": "string", "description": "Directorio de trabajo." },
+    "project": { "type": "string", "minLength": 1, "description": "Proyecto monitoreado." },
+    "stage": { "type": "integer", "minimum": 1, "maximum": 12, "description": "Etapa en curso." },
+    "is_error": {
+      "type": "boolean",
+      "description": "true si la tool falló o exit_code != 0. Lo marca onix-guard."
+    },
+    "is_repetition": {
+      "type": "boolean",
+      "description": "true si onix-guard detectó una repetición según la regla configurada."
+    },
+    "credentials": {
+      "type": "array",
+      "description": "Credenciales DETECTADAS y redactadas en este evento. Solo metadatos + hash; NUNCA el valor real.",
+      "items": { "$ref": "#/$defs/Credential" }
+    }
+  },
+  "$defs": {
+    "Result": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "exit_code": { "type": "integer", "description": "Código de salida." },
+        "duration_ms": { "type": "integer", "minimum": 0, "description": "Duración en ms." }
+      }
+    },
+    "Credential": {
+      "type": "object",
+      "description": "Credencial detectada. El contrato prohíbe transportar el valor real.",
+      "additionalProperties": false,
+      "required": ["kind", "sha256", "label"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Tipo de credencial detectada.",
+          "enum": ["api_key", "token", "password", "conn_string", "env"]
+        },
+        "sha256": {
+          "type": "string",
+          "description": "SHA-256 del valor real (lo único que se conserva).",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "label": {
+          "type": "string",
+          "description": "Etiqueta legible que reemplaza al valor, p. ej. '[credencial · sha256:9f2c…e41a]'."
+        }
+      }
+    }
+  }
+}

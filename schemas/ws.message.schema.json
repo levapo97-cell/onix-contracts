@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://onix.devtoolsdk.com/schemas/ws.message.schema.json",
+  "title": "WsMessage",
+  "description": "Mensaje que onix-gateway envía al frontend por WebSocket (/ws). Sobre estos type el cliente actualiza la lista de actividad, tarjetas de agente, oficina pixel y contadores.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "data"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "description": "Categoría del mensaje en vivo.",
+      "enum": ["event", "metrics", "agent_status", "report", "alert", "stage"]
+    },
+    "data": {
+      "description": "Carga útil; su forma depende de type (CleanEvent para 'event', métricas para 'metrics', etc.).",
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

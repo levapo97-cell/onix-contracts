@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://onix.devtoolsdk.com/schemas/mcp.methods.schema.json",
+  "title": "McpMethods",
+  "description": "Contratos de las herramientas MCP que onix-orchestrator expone a los agentes. reportar_al_jefe y pedir_al_jefe son bloqueantes: la llamada NO retorna hasta que el jefe responde desde el panel.",
+  "type": "object",
+  "$defs": {
+    "ReportarAlJefeParams": {
+      "type": "object",
+      "description": "Entrada de reportar_al_jefe(): crea un reporte, pausa la sesión y espera la decisión del jefe.",
+      "additionalProperties": false,
+      "required": ["stage", "summary"],
+      "properties": {
+        "stage": { "type": "integer", "minimum": 1, "maximum": 12, "description": "Etapa que se reporta." },
+        "summary": { "type": "string", "minLength": 1, "description": "Resumen de lo hecho en la etapa." },
+        "deliverables": {
+          "type": "array",
+          "description": "Entregables con su ruta/artefacto.",
+          "items": { "type": "string" }
+        },
+        "decisions": {
+          "type": "array",
+          "description": "Decisiones que necesitan la aprobación del jefe.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "PedirAlJefeParams": {
+      "type": "object",
+      "description": "Entrada de pedir_al_jefe(): pregunta bloqueante a mitad de etapa.",
+      "additionalProperties": false,
+      "required": ["question"],
+      "properties": {
+        "question": { "type": "string", "minLength": 1, "description": "Pregunta para el jefe." }
+      }
+    },
+    "JefeResponse": {
+      "type": "object",
+      "description": "Respuesta del jefe que retorna la llamada MCP pendiente.",
+      "additionalProperties": false,
+      "required": ["action"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Decisión del jefe sobre el reporte.",
+          "enum": ["aprobar", "cambios", "responder"]
+        },
+        "message": { "type": "string", "description": "Observaciones o respuesta escrita del jefe." }
+      }
+    },
+    "ConsultarPlanResult": {
+      "type": "object",
+      "description": "Salida de consultar_plan(): el plan de 12 etapas y la etapa actual.",
+      "additionalProperties": false,
+      "required": ["current_stage", "stages"],
+      "properties": {
+        "current_stage": { "type": "integer", "minimum": 1, "maximum": 12, "description": "Etapa actual." },
+        "stages": {
+          "type": "array",
+          "description": "Las 12 etapas con su estado.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["number", "name", "status"],
+            "properties": {
+              "number": { "type": "integer", "minimum": 1, "maximum": 12 },
+              "name": { "type": "string" },
+              "status": { "type": "string", "enum": ["pendiente", "activa", "hecha"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

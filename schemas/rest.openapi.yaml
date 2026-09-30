@@ -1,0 +1,101 @@
+# Contrato REST de onix-gateway (edge público que consume el frontend OnixGuard).
+# Fuente de verdad de las rutas HTTP. Los cuerpos de evento/WS/MCP viven en los *.schema.json de esta misma carpeta.
+openapi: 3.1.0
+info:
+  title: OnixGuard Gateway API
+  version: "1.0.0"
+  description: >
+    REST + WebSocket + JWT. Lee de PostgreSQL y se suscribe a NATS para empujar el vivo.
+    Sin lógica de negocio pesada: las acciones del jefe se reenvían a onix-orchestrator.
+servers:
+  - url: https://onix.devtoolsdk.com/api
+    description: Producción (VPS tras nginx + Cloudflare)
+  - url: http://localhost:8080/api
+    description: Desarrollo local (docker-compose)
+paths:
+  /healthz:
+    get:
+      summary: Liveness/readiness probe
+      security: []
+      responses:
+        "200": { description: Servicio sano }
+  /auth/login:
+    post:
+      summary: Login del panel (un solo usuario por ahora)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        "200": { description: JWT access + refresh }
+        "401": { description: Credenciales inválidas }
+  /overview:
+    get: { summary: Métricas del header (tools, tokens, costo, errores, repeticiones, etapa X/12), responses: { "200": { description: OK } } }
+  /agents:
+    get: { summary: Lista de agentes y su estado, responses: { "200": { description: OK } } }
+  /stages:
+    get: { summary: Las 12 etapas y su estado, responses: { "200": { description: OK } } }
+  /events:
+    get:
+      summary: Eventos con filtros (para la pantalla Logs)
+      parameters:
+        - { name: agent, in: query, schema: { type: string } }
+        - { name: stage, in: query, schema: { type: integer } }
+        - { name: type, in: query, schema: { type: string } }
+        - { name: q, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: cursor, in: query, schema: { type: string } }
+      responses: { "200": { description: Página de eventos + cursor } }
+  /events/{id}:
+    get:
+      summary: Detalle de un evento (incluye credencial como hash)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: OK }, "404": { description: No existe } }
+  /reports:
+    get: { summary: Bandeja de reportes, responses: { "200": { description: OK } } }
+  /reports/{id}:
+    get:
+      summary: Detalle de un reporte + chat
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: OK } }
+  /reports/{id}/respond:
+    post:
+      summary: Respuesta del jefe (se reenvía a onix-orchestrator; retorna la llamada MCP pendiente)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [aprobar, cambios, responder] }
+                message: { type: string }
+      responses: { "200": { description: Aceptado } }
+  /export:
+    post:
+      summary: Exportar para análisis (JSONL/CSV)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scope, format]
+              properties:
+                scope: { type: string, enum: [todas, etapa_actual] }
+                format: { type: string, enum: [jsonl, csv] }
+      responses: { "200": { description: Ruta del export generado } }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+security:
+  - bearerAuth: []

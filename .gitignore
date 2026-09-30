@@ -1,0 +1,12 @@
+# Rust
+/rust/target/
+/rust/Cargo.lock
+
+# Go
+/go/vendor/
+
+# Node (solo se usa npx para quicktype en codegen)
+node_modules/
+
+# OS
+.DS_Store
